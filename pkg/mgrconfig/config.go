@@ -83,6 +83,11 @@ type Config struct {
 	// "android": (Android) Emulate permissions of an untrusted app.
 	Sandbox string `json:"sandbox"`
 
+	// my Linux Kernel Static Analysis Result
+	// System call dependency graph
+	// it is a json file absolute path
+	SyscallDepDir string `json:"syscall_dep_dir,omitempty"`
+
 	// Use KCOV coverage (default: true).
 	Cover bool `json:"cover"`
 	// Reproduce, localize and minimize crashers (default: true).

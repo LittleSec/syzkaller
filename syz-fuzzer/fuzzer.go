@@ -267,7 +267,18 @@ func main() {
 	for _, id := range r.CheckResult.EnabledCalls[sandbox] {
 		calls[target.Syscalls[id]] = true
 	}
-	fuzzer.choiceTable = target.BuildChoiceTable(fuzzer.corpus, calls)
+	sda := &rpctype.ReadSysDepArg{Unused: 0}
+	sdr := &rpctype.ReadSysDepRes{}
+	if err := manager.Call("Manager.ReadSysDep", sda, sdr); err != nil {
+		log.Logf(0, "[hjx] Manager.ReadSysDep call failed: %v", err)
+	}
+	if sdr.IsVaild {
+		log.Logf(0, "[hjx] fuzzer receive SyscallDeps %v", sdr.SyscallDeps[0])
+		fuzzer.choiceTable = target.BuildCTbySyscallDep(sdr.SyscallDeps, calls)
+	} else {
+		log.Logf(0, "[hjx] default BuildChoiceTable")
+		fuzzer.choiceTable = target.BuildChoiceTable(fuzzer.corpus, calls)
+	}
 
 	for pid := 0; pid < *flagProcs; pid++ {
 		proc, err := newProc(fuzzer, pid)

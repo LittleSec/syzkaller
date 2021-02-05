@@ -71,6 +71,9 @@ type Manager struct {
 	configEnabledSyscalls []int
 	targetEnabledSyscalls map[*prog.Syscall]bool
 
+	syscallDeps [][]int
+	hasSysDeps  bool
+
 	candidates       []rpctype.RPCCandidate // untriaged inputs from corpus and hub
 	disabledHashes   map[string]struct{}
 	corpus           map[string]rpctype.RPCInput
@@ -187,6 +190,8 @@ func RunManager(cfg *mgrconfig.Config, target *prog.Target, sysTarget *targets.T
 	mgr.preloadCorpus()
 	mgr.initHTTP() // Creates HTTP server.
 	mgr.collectUsedFiles()
+
+	mgr.loadSyscallDeps() // load Syscall Dependency
 
 	// Create RPC server for fuzzers.
 	mgr.serv, err = startRPCServer(mgr)
@@ -1085,6 +1090,9 @@ func (mgr *Manager) machineChecked(a *rpctype.CheckArgs, enabledSyscalls map[*pr
 	}
 	log.Logf(0, "machine check:")
 	log.Logf(0, "%-24v: %v/%v", "syscalls", len(enabledSyscalls), len(mgr.target.Syscalls))
+	for ensys, _ := range enabledSyscalls {
+		log.Logf(4, "%-6v: CallName %v, Name %v", ensys.ID, ensys.CallName, ensys.Name)
+	}
 	for _, feat := range a.Features.Supported() {
 		log.Logf(0, "%-24v: %v", feat.Name, feat.Reason)
 	}
@@ -1150,6 +1158,59 @@ func (mgr *Manager) rotateCorpus() bool {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	return mgr.phase == phaseTriagedHub
+}
+
+func (mgr *Manager) getsyscallDeps() ([][]int, bool) {
+	return mgr.syscallDeps, mgr.hasSysDeps
+}
+
+func (mgr *Manager) loadSyscallDeps() {
+	if mgr.cfg.SyscallDepDir == "" {
+		log.Logf(0, "[hjx ]config param `syscall_dep_dir` is empty")
+		mgr.hasSysDeps = false
+		return
+	}
+	jsonFile, err := os.Open(mgr.cfg.SyscallDepDir)
+	defer jsonFile.Close()
+	if err != nil {
+		fmt.Println("[hjx] open `syscall_dep_dir` failed: ", err)
+		mgr.hasSysDeps = false
+		return
+	}
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	var result map[string]map[string]int
+	json.Unmarshal([]byte(byteValue), &result)
+	syscalls := mgr.target.Syscalls
+	prios := make([][]int, len(syscalls))
+	for i := range prios {
+		prios[i] = make([]int, len(syscalls))
+		sys1 := "__se_sys_" + syscalls[i].CallName
+		for j := range prios[i] {
+			sys2 := "__se_sys_" + syscalls[j].CallName
+			if ws, ok1 := result[sys1]; ok1 {
+				if w, ok2 := ws[sys2]; ok2 {
+					if w == 0 {
+						prios[syscalls[i].ID][syscalls[j].ID] = 1024
+					} else {
+						prios[syscalls[i].ID][syscalls[j].ID] = w
+					}
+				}
+			}
+		}
+	}
+	// may have some syscalls do not analysis by LKSAST,
+	// but in targe.OS(because ugly implementation).
+	// and CT ChoiceTable (actually run table) can NOT be 0
+	// so here assign these 0-value with a magic num(512)
+	for i := range prios {
+		for j := range prios[i] {
+			if prios[i][j] == 0 {
+				prios[i][j] = 512
+			}
+		}
+	}
+	mgr.hasSysDeps = true
+	mgr.syscallDeps = prios
 }
 
 func (mgr *Manager) collectUsedFiles() {

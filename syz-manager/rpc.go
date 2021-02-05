@@ -57,6 +57,7 @@ type RPCManagerView interface {
 	newInput(inp rpctype.RPCInput, sign signal.Signal) bool
 	candidateBatch(size int) []rpctype.RPCCandidate
 	rotateCorpus() bool
+	getsyscallDeps() ([][]int, bool)
 }
 
 func startRPCServer(mgr *Manager) (*RPCServer, error) {
@@ -81,6 +82,15 @@ func startRPCServer(mgr *Manager) (*RPCServer, error) {
 	serv.port = s.Addr().(*net.TCPAddr).Port
 	go s.Serve()
 	return serv, nil
+}
+
+func (serv *RPCServer) ReadSysDep(a *rpctype.ReadSysDepArg, r *rpctype.ReadSysDepRes) error {
+	r.SyscallDeps, r.IsVaild = serv.mgr.getsyscallDeps()
+	if r.IsVaild {
+		return nil
+	} else {
+		return fmt.Errorf("Manager server does not have SyscallDeps")
+	}
 }
 
 func (serv *RPCServer) Connect(a *rpctype.ConnectArgs, r *rpctype.ConnectRes) error {

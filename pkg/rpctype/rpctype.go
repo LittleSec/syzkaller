@@ -129,3 +129,12 @@ type RunTestDoneArgs struct {
 	Info   []*ipc.ProgInfo
 	Error  string
 }
+
+type ReadSysDepArg struct {
+	Unused int
+}
+
+type ReadSysDepRes struct {
+	SyscallDeps [][]int
+	IsVaild     bool
+}

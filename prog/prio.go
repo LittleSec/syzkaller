@@ -221,6 +221,45 @@ type ChoiceTable struct {
 	calls  []*Syscall
 }
 
+func (target *Target) BuildCTbySyscallDep(sysdep [][]int, enabled map[*Syscall]bool) *ChoiceTable {
+	if enabled == nil {
+		enabled = make(map[*Syscall]bool)
+		for _, c := range target.Syscalls {
+			enabled[c] = true
+		}
+	}
+	for call := range enabled {
+		if call.Attrs.Disabled {
+			delete(enabled, call)
+		}
+	}
+	var enabledCalls []*Syscall
+	for c := range enabled {
+		enabledCalls = append(enabledCalls, c)
+	}
+	if len(enabledCalls) == 0 {
+		panic("no syscalls enabled")
+	}
+	sort.Slice(enabledCalls, func(i, j int) bool {
+		return enabledCalls[i].ID < enabledCalls[j].ID
+	})
+	run := make([][]int, len(target.Syscalls))
+	for i := range run {
+		if !enabled[target.Syscalls[i]] {
+			continue
+		}
+		run[i] = make([]int, len(target.Syscalls))
+		sum := 0
+		for j := range run[i] {
+			if enabled[target.Syscalls[j]] {
+				sum += sysdep[i][j]
+			}
+			run[i][j] = sum
+		}
+	}
+	return &ChoiceTable{target, run, enabledCalls}
+}
+
 func (target *Target) BuildChoiceTable(corpus []*Prog, enabled map[*Syscall]bool) *ChoiceTable {
 	if enabled == nil {
 		enabled = make(map[*Syscall]bool)
