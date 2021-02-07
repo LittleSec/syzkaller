@@ -312,6 +312,16 @@ func (ct *ChoiceTable) Enabled(call int) bool {
 	return ct.runs[call] != nil
 }
 
+func sumarr(runs [][]int) []int {
+	ret := make([]int, len(runs[0]))
+	for _, a1 := range runs {
+		for i, v := range a1 {
+			ret[i] += v
+		}
+	}
+	return ret
+}
+
 func (ct *ChoiceTable) choose(r *rand.Rand, bias int) int {
 	if bias < 0 {
 		bias = ct.calls[r.Intn(len(ct.calls))].ID
@@ -320,6 +330,15 @@ func (ct *ChoiceTable) choose(r *rand.Rand, bias int) int {
 		fmt.Printf("bias to disabled syscall %v", ct.target.Syscalls[bias].Name)
 		panic("disabled syscall")
 	}
+	// run := make([]int, len(ct.runs[bias]))
+	// if bias-2 >= 0 {
+	// 	run0 := ct.runs[bias]
+	// 	run1 := ct.runs[bias-1]
+	// 	run2 := ct.runs[bias-2]
+	// 	run = sumarr([][]int{run0, run1, run2})
+	// } else {
+	// 	run = ct.runs[bias]
+	// }
 	run := ct.runs[bias]
 	x := r.Intn(run[len(run)-1]) + 1
 	res := sort.SearchInts(run, x)
