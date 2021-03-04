@@ -1184,9 +1184,11 @@ func (mgr *Manager) loadSyscallDeps() {
 	prios := make([][]int, len(syscalls))
 	for i := range prios {
 		prios[i] = make([]int, len(syscalls))
-		sys1 := "__se_sys_" + syscalls[i].CallName
+		// sys1 := "__se_sys_" + syscalls[i].CallName
+		sys1 := syscalls[i].CallName
 		for j := range prios[i] {
-			sys2 := "__se_sys_" + syscalls[j].CallName
+			// sys2 := "__se_sys_" + syscalls[j].CallName
+			sys2 := syscalls[j].CallName
 			if ws, ok1 := result[sys1]; ok1 {
 				if w, ok2 := ws[sys2]; ok2 {
 					if w == 0 {
