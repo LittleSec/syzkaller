@@ -619,6 +619,16 @@ func (mgr *Manager) runInstanceInner(index int, instanceName string) (*report.Re
 		}
 	}
 
+	jsonFile, isFileExist := os.Open(mgr.cfg.SyscallDepDir)
+	defer jsonFile.Close()
+	if isFileExist == nil {
+		sysdepCmd, err := inst.Copy(mgr.cfg.SyscallDepDir)
+		fmt.Println("[hjx] sysdepCmd: ", sysdepCmd)
+		if err != nil {
+			fmt.Printf("[hjx] failed to copy sysdep: %v", err)
+		}
+	}
+
 	fuzzerV := 0
 	procs := mgr.cfg.Procs
 	if *flagDebug {

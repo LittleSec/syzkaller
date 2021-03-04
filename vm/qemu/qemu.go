@@ -517,6 +517,11 @@ func (inst *instance) Copy(hostSrc string) (string, error) {
 		inst.files[vmDst] = hostSrc
 	}
 
+	// store weight json file in /tmp path in guest OS
+	if base == "weight" { // hjx: TODO: do not use hard code
+		vmDst = filepath.Join("/tmp", base)
+	}
+
 	args := append(vmimpl.SCPArgs(inst.debug, inst.sshkey, inst.port),
 		hostSrc, inst.sshuser+"@localhost:"+vmDst)
 	if inst.debug {
